@@ -1,0 +1,1230 @@
+<!doctype html>
+<html lang="en">
+  <head>
+    <meta charset="UTF-8" />
+    <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+    <title>ETH Wallet Tracer</title>
+    <style>
+      * {
+        margin: 0;
+        padding: 0;
+        box-sizing: border-box;
+      }
+
+      body {
+        font-family:
+          -apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, Oxygen, Ubuntu, Cantarell,
+          sans-serif;
+        background: linear-gradient(135deg, #667eea 0%, #764ba2 100%);
+        min-height: 100vh;
+        padding: 20px;
+      }
+
+      .container {
+        max-width: 1200px;
+        margin: 0 auto;
+      }
+
+      .header {
+        text-align: center;
+        color: white;
+        margin-bottom: 30px;
+      }
+
+      .header h1 {
+        font-size: 2.5em;
+        margin-bottom: 10px;
+      }
+
+      .header p {
+        opacity: 0.9;
+        font-size: 1.1em;
+      }
+
+      .card {
+        background: white;
+        border-radius: 12px;
+        padding: 30px;
+        box-shadow: 0 10px 40px rgba(0, 0, 0, 0.2);
+        margin-bottom: 20px;
+      }
+
+      .form-group {
+        margin-bottom: 20px;
+      }
+
+      .form-group label {
+        display: block;
+        margin-bottom: 8px;
+        font-weight: 600;
+        color: #333;
+      }
+
+      .form-group input {
+        width: 100%;
+        padding: 12px;
+        border: 2px solid #e0e0e0;
+        border-radius: 8px;
+        font-size: 16px;
+        transition: border-color 0.3s;
+      }
+
+      .form-group input:focus {
+        outline: none;
+        border-color: #667eea;
+      }
+
+      .form-row {
+        display: grid;
+        grid-template-columns: 2fr 1fr;
+        gap: 20px;
+      }
+
+      button {
+        background: linear-gradient(135deg, #667eea 0%, #764ba2 100%);
+        color: white;
+        border: none;
+        padding: 14px 30px;
+        border-radius: 8px;
+        font-size: 16px;
+        font-weight: 600;
+        cursor: pointer;
+        transition:
+          transform 0.2s,
+          box-shadow 0.2s;
+        width: 100%;
+      }
+
+      button:hover {
+        transform: translateY(-2px);
+        box-shadow: 0 5px 20px rgba(102, 126, 234, 0.4);
+      }
+
+      button:disabled {
+        opacity: 0.6;
+        cursor: not-allowed;
+        transform: none;
+      }
+
+      .cancel-btn {
+        background: #f8f9fa;
+        color: #666;
+        border: 1px solid #dee2e6;
+        padding: 8px 20px;
+        border-radius: 6px;
+        font-size: 14px;
+        font-weight: 500;
+        margin-top: 15px;
+        width: auto;
+        min-width: 120px;
+      }
+
+      .cancel-btn:hover {
+        background: #e9ecef;
+        border-color: #adb5bd;
+        color: #495057;
+        transform: none;
+        box-shadow: 0 2px 8px rgba(0, 0, 0, 0.1);
+      }
+
+      .loading-with-cancel {
+        display: flex;
+        flex-direction: column;
+        align-items: center;
+        gap: 10px;
+      }
+
+      .loading {
+        text-align: center;
+        padding: 40px;
+        color: #667eea;
+        font-size: 18px;
+      }
+
+      .error {
+        background: #fee;
+        border: 2px solid #fcc;
+        color: #c33;
+        padding: 15px;
+        border-radius: 8px;
+        margin-bottom: 20px;
+      }
+
+      .summary {
+        display: grid;
+        grid-template-columns: repeat(auto-fit, minmax(200px, 1fr));
+        gap: 20px;
+        margin-bottom: 30px;
+      }
+
+      .summary-item {
+        background: #f8f9fa;
+        padding: 20px;
+        border-radius: 8px;
+        text-align: center;
+      }
+
+      .summary-item h3 {
+        color: #666;
+        font-size: 14px;
+        margin-bottom: 8px;
+        text-transform: uppercase;
+        letter-spacing: 1px;
+      }
+
+      .summary-item .value {
+        font-size: 24px;
+        font-weight: 700;
+        color: #333;
+      }
+
+      .summary-item .value.positive {
+        color: #10b981;
+      }
+
+      .summary-item .value.negative {
+        color: #ef4444;
+      }
+
+      .transactions {
+        margin-top: 30px;
+      }
+
+      .transaction {
+        border: 1px solid #e0e0e0;
+        border-radius: 8px;
+        padding: 20px;
+        margin-bottom: 15px;
+        transition: box-shadow 0.2s;
+      }
+
+      .transaction:hover {
+        box-shadow: 0 4px 12px rgba(0, 0, 0, 0.1);
+      }
+
+      .transaction-header {
+        display: flex;
+        justify-content: space-between;
+        align-items: center;
+        margin-bottom: 15px;
+      }
+
+      .transaction-type {
+        padding: 6px 12px;
+        border-radius: 20px;
+        font-size: 12px;
+        font-weight: 600;
+        text-transform: uppercase;
+      }
+
+      .transaction-type.incoming {
+        background: #d1fae5;
+        color: #065f46;
+      }
+
+      .transaction-type.outgoing {
+        background: #fee2e2;
+        color: #991b1b;
+      }
+
+      .transaction-hash {
+        font-family: 'Courier New', monospace;
+        font-size: 14px;
+        color: #667eea;
+        word-break: break-all;
+      }
+
+      .transaction-details {
+        display: grid;
+        grid-template-columns: 1fr 1fr;
+        gap: 15px;
+        margin-top: 15px;
+      }
+
+      .detail-item {
+        font-size: 14px;
+      }
+
+      .detail-item label {
+        color: #666;
+        font-weight: 600;
+        display: block;
+        margin-bottom: 4px;
+      }
+
+      .detail-item .value {
+        color: #333;
+        word-break: break-all;
+      }
+
+      .token-info {
+        background: #f0f9ff;
+        border-left: 4px solid #667eea;
+        padding: 12px;
+        margin-top: 10px;
+        border-radius: 4px;
+      }
+
+      .token-info strong {
+        color: #667eea;
+      }
+
+      .addresses-section {
+        margin-top: 30px;
+      }
+
+      .address-list {
+        display: grid;
+        grid-template-columns: repeat(auto-fill, minmax(300px, 1fr));
+        gap: 10px;
+        margin-top: 15px;
+      }
+
+      .address-item {
+        background: #f8f9fa;
+        padding: 10px;
+        border-radius: 6px;
+        font-family: 'Courier New', monospace;
+        font-size: 12px;
+        word-break: break-all;
+      }
+
+      .graph-container {
+        margin-top: 30px;
+        background: #f8f9fa;
+        border-radius: 8px;
+        padding: 20px;
+        overflow: auto;
+      }
+
+      #graphCanvas {
+        border: 1px solid #e0e0e0;
+        border-radius: 8px;
+        background: white;
+        cursor: move;
+      }
+
+      .graph-controls {
+        margin-bottom: 15px;
+        display: flex;
+        gap: 10px;
+        align-items: center;
+      }
+
+      .graph-stats {
+        display: flex;
+        gap: 20px;
+        margin-bottom: 15px;
+        font-size: 14px;
+        color: #666;
+      }
+
+      .graph-legend {
+        display: flex;
+        gap: 20px;
+        margin-top: 15px;
+        font-size: 12px;
+      }
+
+      .legend-item {
+        display: flex;
+        align-items: center;
+        gap: 8px;
+      }
+
+      .legend-color {
+        width: 20px;
+        height: 20px;
+        border-radius: 50%;
+        border: 2px solid #333;
+      }
+
+      .node-tooltip {
+        position: absolute;
+        background: rgba(0, 0, 0, 0.9);
+        color: white;
+        padding: 12px;
+        border-radius: 8px;
+        font-size: 12px;
+        pointer-events: none;
+        z-index: 1000;
+        max-width: 300px;
+        box-shadow: 0 4px 12px rgba(0, 0, 0, 0.3);
+      }
+
+      .node-tooltip strong {
+        display: block;
+        margin-bottom: 8px;
+        font-size: 14px;
+        color: #667eea;
+      }
+
+      .node-tooltip .tooltip-item {
+        margin: 4px 0;
+        font-family: 'Courier New', monospace;
+        font-size: 11px;
+      }
+
+      .node-info-panel {
+        margin-top: 20px;
+        padding: 15px;
+        background: #f8f9fa;
+        border-radius: 8px;
+        border-left: 4px solid #667eea;
+      }
+
+      .node-info-panel h3 {
+        margin-bottom: 10px;
+        color: #333;
+      }
+
+      .node-info-panel .info-row {
+        display: grid;
+        grid-template-columns: 120px 1fr;
+        gap: 10px;
+        margin: 8px 0;
+        font-size: 13px;
+      }
+
+      .node-info-panel .info-label {
+        font-weight: 600;
+        color: #666;
+      }
+
+      .node-info-panel .info-value {
+        font-family: 'Courier New', monospace;
+        word-break: break-all;
+      }
+    </style>
+  </head>
+  <body>
+    <div class="container">
+      <div class="header">
+        <h1>🔍 ETH Wallet Tracer</h1>
+        <p>Investigate wallet transactions and value flows</p>
+      </div>
+
+      <div class="card">
+        <form id="traceForm">
+          <div class="form-row">
+            <div class="form-group">
+              <label for="address">Wallet Address</label>
+              <input
+                type="text"
+                id="address"
+                name="address"
+                placeholder="0x..."
+                required
+                pattern="^0x[a-fA-F0-9]{40}$"
+              />
+            </div>
+            <div class="form-group">
+              <label for="days">Days to Trace</label>
+              <input type="number" id="days" name="days" value="30" min="1" max="365" required />
+              <small style="color: #666; font-size: 0.875rem; display: block; margin-top: 0.25rem"
+                >Recommended number of days &lt; 6 for quick results</small
+              >
+            </div>
+          </div>
+          <div class="form-row">
+            <div class="form-group">
+              <label for="minUsdValue">Minimum USD Value (Optional)</label>
+              <input
+                type="number"
+                id="minUsdValue"
+                name="minUsdValue"
+                value="1000"
+                placeholder="e.g., 1000"
+                min="0"
+                step="0.01"
+              />
+              <small style="color: #666; font-size: 12px; display: block; margin-top: 4px">
+                Only show ETH transactions above this USD value
+              </small>
+            </div>
+            <div class="form-group">
+              <label for="hops">Hops</label>
+              <input type="number" id="hops" name="hops" value="2" min="1" max="3" required />
+              <small style="color: #666; font-size: 12px; display: block; margin-top: 4px">
+                Number of transaction hops to trace (1-3 only)
+              </small>
+            </div>
+          </div>
+          <button type="submit" id="submitBtn">Trace Wallet</button>
+        </form>
+      </div>
+
+      <div id="errorContainer"></div>
+      <div id="loadingContainer"></div>
+      <div id="resultsContainer"></div>
+    </div>
+
+    <script>
+      const API_BASE = window.location.origin;
+
+      // AbortController for cancelling requests
+      let currentAbortController = null;
+
+      function setupCancelButton(loadingContainer, submitBtn) {
+        const cancelBtn = document.getElementById('cancelBtn');
+        if (cancelBtn) {
+          // Remove any existing listeners
+          const newCancelBtn = cancelBtn.cloneNode(true);
+          cancelBtn.parentNode.replaceChild(newCancelBtn, cancelBtn);
+
+          newCancelBtn.addEventListener('click', () => {
+            if (currentAbortController) {
+              currentAbortController.abort();
+              loadingContainer.innerHTML = '<div class="loading">⏹️ Search cancelled</div>';
+              setTimeout(() => {
+                loadingContainer.innerHTML = '';
+                submitBtn.disabled = false;
+              }, 2000);
+            }
+          });
+        }
+      }
+
+      document.getElementById('traceForm').addEventListener('submit', async (e) => {
+        e.preventDefault();
+
+        const address = document.getElementById('address').value.trim();
+        const days = parseInt(document.getElementById('days').value);
+        const minUsdValue = parseFloat(document.getElementById('minUsdValue').value);
+        const hops = parseInt(document.getElementById('hops').value);
+        const submitBtn = document.getElementById('submitBtn');
+        const loadingContainer = document.getElementById('loadingContainer');
+
+        // Clear previous results
+        document.getElementById('errorContainer').innerHTML = '';
+        document.getElementById('resultsContainer').innerHTML = '';
+
+        // Create new AbortController for this request
+        currentAbortController = new AbortController();
+        const signal = currentAbortController.signal;
+
+        // Show loading with cancel button
+        loadingContainer.innerHTML = `
+                <div class="loading-with-cancel">
+                    <div class="loading">🔍 Tracing wallet... Please wait...</div>
+                    <button type="button" class="cancel-btn" id="cancelBtn">Cancel Search</button>
+                </div>
+            `;
+
+        submitBtn.disabled = true;
+        setupCancelButton(loadingContainer, submitBtn);
+
+        try {
+          // Build query string - backend will handle USD to ETH conversion
+          let queryString = `address=${encodeURIComponent(address)}&days=${days}&hops=${hops}`;
+          if (minUsdValue && minUsdValue > 0) {
+            queryString += `&minUsdAmount=${minUsdValue}`;
+          }
+
+          const response = await fetch(`${API_BASE}/wallet/trace?${queryString}`, { signal });
+          const data = await response.json();
+
+          if (!response.ok) {
+            throw new Error(data.message || 'Failed to trace wallet');
+          }
+
+          displayResults(data);
+        } catch (error) {
+          // Don't show error if request was aborted
+          if (error.name === 'AbortError') {
+            return; // Already handled by cancel button
+          }
+          document.getElementById('errorContainer').innerHTML =
+            `<div class="error">❌ Error: ${error.message}</div>`;
+        } finally {
+          // Only clear if not cancelled
+          if (!signal.aborted) {
+            loadingContainer.innerHTML = '';
+            submitBtn.disabled = false;
+          }
+          currentAbortController = null;
+        }
+      });
+
+      function displayResults(data) {
+        const container = document.getElementById('resultsContainer');
+
+        // Ensure we have the data structure
+        if (!data || !data.summary || !data.summary.uniqueAddresses) {
+          console.error('Invalid data structure:', data);
+          return;
+        }
+
+        const receivedFrom = data.summary.uniqueAddresses.receivedFrom || [];
+        const sentTo = data.summary.uniqueAddresses.sentTo || [];
+
+        console.log('Received From addresses:', receivedFrom.length, receivedFrom);
+        console.log('Sent To addresses:', sentTo.length, sentTo);
+        console.log('Graph data:', data.graph);
+
+        // Summary
+        const summaryHtml = `
+                <div class="card">
+                    <h2 style="margin-bottom: 20px;">Summary</h2>
+                    <div class="summary">
+                        <div class="summary-item">
+                            <h3>Total Incoming</h3>
+                            <div class="value positive">
+                                ${data.summary.totalIncomingUsd || 'N/A'}
+                                ${data.summary.totalIncomingUsd ? `<div style="font-size: 14px; color: #666; margin-top: 4px;">${parseFloat(data.summary.totalIncoming).toFixed(6)} ETH</div>` : ''}
+                            </div>
+                        </div>
+                        <div class="summary-item">
+                            <h3>Total Outgoing</h3>
+                            <div class="value negative">
+                                ${data.summary.totalOutgoingUsd || 'N/A'}
+                                ${data.summary.totalOutgoingUsd ? `<div style="font-size: 14px; color: #666; margin-top: 4px;">${parseFloat(data.summary.totalOutgoing).toFixed(6)} ETH</div>` : ''}
+                            </div>
+                        </div>
+                        <div class="summary-item">
+                            <h3>Net Flow</h3>
+                            <div class="value ${parseFloat(data.summary.netFlow) >= 0 ? 'positive' : 'negative'}">
+                                ${data.summary.netFlowUsd || 'N/A'}
+                                ${data.summary.netFlowUsd ? `<div style="font-size: 14px; color: #666; margin-top: 4px;">${parseFloat(data.summary.netFlow).toFixed(6)} ETH</div>` : ''}
+                            </div>
+                        </div>
+                        <div class="summary-item">
+                            <h3>Transactions</h3>
+                            <div class="value">${data.summary.transactionCount}</div>
+                        </div>
+                    </div>
+                </div>
+
+                ${
+                  data.summary.topInflowSources && data.summary.topInflowSources.length > 0
+                    ? `
+                <div class="card">
+                    <h2 style="margin-bottom: 20px;">📥 Top 10 Inflow Sources (by USD Value)</h2>
+                    <div style="overflow-x: auto;">
+                        <table style="width: 100%; border-collapse: collapse;">
+                            <thead>
+                                <tr style="background: #f8f9fa; border-bottom: 2px solid #e0e0e0;">
+                                    <th style="padding: 12px; text-align: left; font-weight: 600; color: #666;">Rank</th>
+                                    <th style="padding: 12px; text-align: left; font-weight: 600; color: #666;">Address</th>
+                                    <th style="padding: 12px; text-align: right; font-weight: 600; color: #666;">Total USD Value</th>
+                                    <th style="padding: 12px; text-align: center; font-weight: 600; color: #666;">Transactions</th>
+                                </tr>
+                            </thead>
+                            <tbody>
+                                ${data.summary.topInflowSources
+                                  .map(
+                                    (source, index) => `
+                                    <tr style="border-bottom: 1px solid #e0e0e0;">
+                                        <td style="padding: 12px; font-weight: 600; color: #667eea;">#${index + 1}</td>
+                                        <td style="padding: 12px; font-family: 'Courier New', monospace; font-size: 13px; word-break: break-all;">${source.address}</td>
+                                        <td style="padding: 12px; text-align: right; font-weight: 600; color: #10b981;">${source.totalValueUsd}</td>
+                                        <td style="padding: 12px; text-align: center; color: #666;">${source.transactionCount}</td>
+                                    </tr>
+                                `,
+                                  )
+                                  .join('')}
+                            </tbody>
+                        </table>
+                    </div>
+                </div>
+                `
+                    : ''
+                }
+
+                ${
+                  data.summary.topOutflowSources && data.summary.topOutflowSources.length > 0
+                    ? `
+                <div class="card">
+                    <h2 style="margin-bottom: 20px;">📤 Top 10 Outflow Sources (by USD Value)</h2>
+                    <div style="overflow-x: auto;">
+                        <table style="width: 100%; border-collapse: collapse;">
+                            <thead>
+                                <tr style="background: #f8f9fa; border-bottom: 2px solid #e0e0e0;">
+                                    <th style="padding: 12px; text-align: left; font-weight: 600; color: #666;">Rank</th>
+                                    <th style="padding: 12px; text-align: left; font-weight: 600; color: #666;">Address</th>
+                                    <th style="padding: 12px; text-align: right; font-weight: 600; color: #666;">Total USD Value</th>
+                                    <th style="padding: 12px; text-align: center; font-weight: 600; color: #666;">Transactions</th>
+                                </tr>
+                            </thead>
+                            <tbody>
+                                ${data.summary.topOutflowSources
+                                  .map(
+                                    (source, index) => `
+                                    <tr style="border-bottom: 1px solid #e0e0e0;">
+                                        <td style="padding: 12px; font-weight: 600; color: #667eea;">#${index + 1}</td>
+                                        <td style="padding: 12px; font-family: 'Courier New', monospace; font-size: 13px; word-break: break-all;">${source.address}</td>
+                                        <td style="padding: 12px; text-align: right; font-weight: 600; color: #ef4444;">${source.totalValueUsd}</td>
+                                        <td style="padding: 12px; text-align: center; color: #666;">${source.transactionCount}</td>
+                                    </tr>
+                                `,
+                                  )
+                                  .join('')}
+                            </tbody>
+                        </table>
+                    </div>
+                </div>
+                `
+                    : ''
+                }
+
+                <div class="card addresses-section">
+                    <h2 style="margin-bottom: 20px;">Connected Addresses</h2>
+                    <div>
+                        <h3 style="margin-bottom: 10px; color: #10b981;">Received From (${receivedFrom.length})</h3>
+                        <div class="address-list">
+                            ${
+                              receivedFrom.length > 0
+                                ? receivedFrom
+                                    .map((addr) => `<div class="address-item">${addr}</div>`)
+                                    .join('')
+                                : '<div class="address-item" style="color: #999;">No addresses</div>'
+                            }
+                        </div>
+                    </div>
+                    <div style="margin-top: 20px;">
+                        <h3 style="margin-bottom: 10px; color: #ef4444;">Sent To (${sentTo.length})</h3>
+                        <div class="address-list">
+                            ${
+                              sentTo.length > 0
+                                ? sentTo
+                                    .map((addr) => `<div class="address-item">${addr}</div>`)
+                                    .join('')
+                                : '<div class="address-item" style="color: #999;">No addresses</div>'
+                            }
+                        </div>
+                    </div>
+                </div>
+
+                <div class="card transactions">
+                    <h2 style="margin-bottom: 20px;">Transactions (${data.transactions.length})</h2>
+                    ${data.transactions
+                      .map(
+                        (tx) => `
+                        <div class="transaction">
+                            <div class="transaction-header">
+                                <span class="transaction-type ${tx.type}">${tx.type}</span>
+                                <div class="transaction-hash">${tx.hash}</div>
+                            </div>
+                            <div class="transaction-details">
+                                <div class="detail-item">
+                                    <label>From</label>
+                                    <div class="value">${tx.from}</div>
+                                </div>
+                                <div class="detail-item">
+                                    <label>To</label>
+                                    <div class="value">${tx.to}</div>
+                                </div>
+                                ${
+                                  tx.tokenTransfers && tx.tokenTransfers.length > 0
+                                    ? `
+                                    <div class="detail-item">
+                                        <label>Value</label>
+                                        <div class="value">
+                                            ${tx.tokenTransfers
+                                              .map((token) => {
+                                                const tokenSymbol = token.tokenSymbol || 'Unknown';
+                                                const tokenName = token.tokenName || '';
+                                                const displayName = tokenName
+                                                  ? `${tokenName} (${tokenSymbol})`
+                                                  : tokenSymbol;
+                                                const usdDisplay = token.valueUsd
+                                                  ? ` <span style="color: #666; margin-left: 8px;">(${token.valueUsd})</span>`
+                                                  : '';
+                                                return `${token.value} ${displayName}${usdDisplay}`;
+                                              })
+                                              .join(', ')}
+                                        </div>
+                                    </div>
+                                    <div class="detail-item">
+                                        <label>Token Contract</label>
+                                        <div class="value" style="font-size: 12px;">${tx.tokenTransfers[0].contractAddress}</div>
+                                    </div>
+                                `
+                                    : `
+                                    <div class="detail-item">
+                                        <label>Value</label>
+                                        <div class="value">
+                                            ${tx.value} ETH
+                                            ${tx.valueUsd ? `<span style="color: #666; margin-left: 8px;">(${tx.valueUsd})</span>` : ''}
+                                        </div>
+                                    </div>
+                                    <div class="detail-item"></div>
+                                `
+                                }
+                                <div class="detail-item">
+                                    <label>Block</label>
+                                    <div class="value">#${tx.blockNumber.toLocaleString()}</div>
+                                </div>
+                            </div>
+                        </div>
+                    `,
+                      )
+                      .join('')}
+                </div>
+            `;
+
+        container.innerHTML = summaryHtml;
+
+        // Render graph if available
+        if (data.graph && data.graph.nodes && data.graph.nodes.length > 0) {
+          renderGraph(data.graph);
+        }
+      }
+
+      function renderGraph(graph) {
+        const graphContainer = document.createElement('div');
+        graphContainer.className = 'card graph-container';
+        graphContainer.innerHTML = `
+                <h2 style="margin-bottom: 20px;">Transaction Network Graph</h2>
+                <div class="graph-stats">
+                    <div><strong>Nodes:</strong> ${graph.nodes.length}</div>
+                    <div><strong>Edges:</strong> ${graph.edges.length}</div>
+                    <div><strong>Center:</strong> ${graph.centerNode.substring(0, 10)}...</div>
+                </div>
+                <div class="graph-controls">
+                    <button onclick="resetGraphView()" style="padding: 8px 16px; background: #667eea; color: white; border: none; border-radius: 4px; cursor: pointer;">Reset View</button>
+                    <button onclick="zoomGraph(1.2)" style="padding: 8px 16px; background: #667eea; color: white; border: none; border-radius: 4px; cursor: pointer;">Zoom In</button>
+                    <button onclick="zoomGraph(0.8)" style="padding: 8px 16px; background: #667eea; color: white; border: none; border-radius: 4px; cursor: pointer;">Zoom Out</button>
+                </div>
+                <div style="position: relative;">
+                    <canvas id="graphCanvas" width="1200" height="800"></canvas>
+                    <div id="nodeTooltip" class="node-tooltip" style="display: none;"></div>
+                </div>
+                <div id="nodeInfoPanel" class="node-info-panel" style="display: none;"></div>
+                <div class="graph-legend">
+                    <div class="legend-item">
+                        <div class="legend-color" style="background: #667eea;"></div>
+                        <span>Hop 0 (Center)</span>
+                    </div>
+                    <div class="legend-item">
+                        <div class="legend-color" style="background: #10b981;"></div>
+                        <span>Hop 1</span>
+                    </div>
+                    <div class="legend-item">
+                        <div class="legend-color" style="background: #f59e0b;"></div>
+                        <span>Hop 2+</span>
+                    </div>
+                    <div class="legend-item" style="margin-left: 20px;">
+                        <div style="width: 30px; height: 2px; background: rgba(16, 185, 129, 0.5); position: relative;">
+                            <div style="position: absolute; right: -4px; top: -3px; width: 0; height: 0; border-left: 6px solid rgba(16, 185, 129, 0.5); border-top: 3px solid transparent; border-bottom: 3px solid transparent;"></div>
+                        </div>
+                        <span>Incoming (to center)</span>
+                    </div>
+                    <div class="legend-item">
+                        <div style="width: 30px; height: 2px; background: rgba(239, 68, 68, 0.5); position: relative;">
+                            <div style="position: absolute; right: -4px; top: -3px; width: 0; height: 0; border-left: 6px solid rgba(239, 68, 68, 0.5); border-top: 3px solid transparent; border-bottom: 3px solid transparent;"></div>
+                        </div>
+                        <span>Outgoing (from center)</span>
+                    </div>
+                    <div class="legend-item">
+                        <div style="width: 30px; height: 2px; background: rgba(102, 126, 234, 0.4); position: relative;">
+                            <div style="position: absolute; right: -4px; top: -3px; width: 0; height: 0; border-left: 6px solid rgba(102, 126, 234, 0.4); border-top: 3px solid transparent; border-bottom: 3px solid transparent;"></div>
+                        </div>
+                        <span>Between nodes</span>
+                    </div>
+                </div>
+            `;
+        document.getElementById('resultsContainer').appendChild(graphContainer);
+
+        const canvas = document.getElementById('graphCanvas');
+        const ctx = canvas.getContext('2d');
+
+        // Graph state
+        let scale = 1;
+        let offsetX = 0;
+        let offsetY = 0;
+        let isDragging = false;
+        let dragStartX = 0;
+        let dragStartY = 0;
+        let hoveredNode = null;
+        let hoveredEdge = null;
+        let selectedNode = null;
+        const tooltip = document.getElementById('nodeTooltip');
+        const infoPanel = document.getElementById('nodeInfoPanel');
+
+        // Color scheme by hop
+        const hopColors = {
+          0: '#667eea', // Center - purple
+          1: '#10b981', // Hop 1 - green
+          2: '#f59e0b', // Hop 2 - orange
+          3: '#ef4444', // Hop 3+ - red
+        };
+
+        // Position nodes in a circular layout
+        const centerX = canvas.width / 2;
+        const centerY = canvas.height / 2;
+        const nodesByHop = {};
+
+        graph.nodes.forEach((node) => {
+          if (!nodesByHop[node.hop]) {
+            nodesByHop[node.hop] = [];
+          }
+          nodesByHop[node.hop].push(node);
+        });
+
+        // Calculate positions
+        const nodePositions = {};
+        const nodeRadius = 15;
+
+        // Center node
+        if (nodesByHop[0] && nodesByHop[0].length > 0) {
+          const centerNode = nodesByHop[0][0];
+          nodePositions[centerNode.address] = { x: centerX, y: centerY, node: centerNode };
+        }
+
+        // Hop 1 - circle around center
+        if (nodesByHop[1] && nodesByHop[1].length > 0) {
+          const radius1 = 200;
+          const angleStep = (2 * Math.PI) / nodesByHop[1].length;
+          nodesByHop[1].forEach((node, i) => {
+            const angle = i * angleStep;
+            nodePositions[node.address] = {
+              x: centerX + radius1 * Math.cos(angle),
+              y: centerY + radius1 * Math.sin(angle),
+              node: node,
+            };
+          });
+        }
+
+        // Hop 2+ - circles around hop 1
+        for (let hop = 2; hop <= 5; hop++) {
+          if (nodesByHop[hop] && nodesByHop[hop].length > 0) {
+            const radius = 200 + (hop - 1) * 150;
+            const angleStep = (2 * Math.PI) / nodesByHop[hop].length;
+            nodesByHop[hop].forEach((node, i) => {
+              const angle = i * angleStep;
+              nodePositions[node.address] = {
+                x: centerX + radius * Math.cos(angle),
+                y: centerY + radius * Math.sin(angle),
+                node: node,
+              };
+            });
+          }
+        }
+
+        // Helper function to draw arrow
+        function drawArrow(ctx, fromX, fromY, toX, toY, color = 'rgba(0, 0, 0, 0.3)') {
+          const headlen = 8; // Length of arrow head
+          const angle = Math.atan2(toY - fromY, toX - fromX);
+
+          // Calculate arrow end point (before node circle)
+          const nodeRadius = 15;
+          const dx = toX - fromX;
+          const dy = toY - fromY;
+          const distance = Math.sqrt(dx * dx + dy * dy);
+          const adjustedToX = toX - nodeRadius * Math.cos(angle);
+          const adjustedToY = toY - nodeRadius * Math.sin(angle);
+
+          // Draw line
+          ctx.beginPath();
+          ctx.moveTo(fromX, fromY);
+          ctx.lineTo(adjustedToX, adjustedToY);
+          ctx.strokeStyle = color;
+          ctx.lineWidth = 2;
+          ctx.stroke();
+
+          // Draw arrow head
+          ctx.beginPath();
+          ctx.moveTo(adjustedToX, adjustedToY);
+          ctx.lineTo(
+            adjustedToX - headlen * Math.cos(angle - Math.PI / 6),
+            adjustedToY - headlen * Math.sin(angle - Math.PI / 6),
+          );
+          ctx.lineTo(
+            adjustedToX - headlen * Math.cos(angle + Math.PI / 6),
+            adjustedToY - headlen * Math.sin(angle + Math.PI / 6),
+          );
+          ctx.closePath();
+          ctx.fillStyle = color;
+          ctx.fill();
+        }
+
+        function drawGraph() {
+          ctx.clearRect(0, 0, canvas.width, canvas.height);
+          ctx.save();
+          ctx.translate(offsetX, offsetY);
+          ctx.scale(scale, scale);
+
+          // Draw edges first (so they appear behind nodes) with directional arrows
+          graph.edges.forEach((edge) => {
+            const fromPos = nodePositions[edge.from];
+            const toPos = nodePositions[edge.to];
+
+            if (fromPos && toPos) {
+              // Determine edge color based on direction relative to center
+              const centerNode = graph.centerNode.toLowerCase();
+              let edgeColor = 'rgba(0, 0, 0, 0.3)'; // Default gray
+
+              // If edge is from center, use outgoing color (red)
+              if (edge.from === centerNode) {
+                edgeColor = 'rgba(239, 68, 68, 0.5)'; // Red for outgoing
+              }
+              // If edge is to center, use incoming color (green)
+              else if (edge.to === centerNode) {
+                edgeColor = 'rgba(16, 185, 129, 0.5)'; // Green for incoming
+              }
+              // If edge is between non-center nodes, use neutral color
+              else {
+                edgeColor = 'rgba(102, 126, 234, 0.4)'; // Purple for inter-node
+              }
+
+              // Highlight if hovered
+              const isHovered = hoveredEdge && hoveredEdge.tx_hash === edge.tx_hash;
+              if (isHovered) {
+                edgeColor = edgeColor
+                  .replace('0.5', '0.8')
+                  .replace('0.4', '0.8')
+                  .replace('0.3', '0.8');
+              }
+
+              // Draw directional arrow with thicker line if hovered
+              ctx.lineWidth = isHovered ? 4 : 2;
+              drawArrow(ctx, fromPos.x, fromPos.y, toPos.x, toPos.y, edgeColor);
+              ctx.lineWidth = 2; // Reset
+            }
+          });
+
+          // Draw nodes
+          Object.values(nodePositions).forEach(({ x, y, node }) => {
+            const hop = node.hop || 0;
+            const color = hopColors[hop] || hopColors[3];
+            const isHovered = hoveredNode === node.address;
+            const isSelected = selectedNode === node.address;
+
+            // Node circle
+            ctx.beginPath();
+            ctx.arc(x, y, nodeRadius, 0, 2 * Math.PI);
+            ctx.fillStyle = color;
+            ctx.fill();
+
+            // Highlight if hovered or selected
+            if (isHovered || isSelected) {
+              ctx.beginPath();
+              ctx.arc(x, y, nodeRadius + 3, 0, 2 * Math.PI);
+              ctx.strokeStyle = isSelected ? '#ff0000' : '#ffff00';
+              ctx.lineWidth = 3;
+              ctx.stroke();
+            }
+
+            ctx.strokeStyle = '#333';
+            ctx.lineWidth = 2;
+            ctx.stroke();
+
+            // Center node is larger
+            if (hop === 0) {
+              ctx.beginPath();
+              ctx.arc(x, y, nodeRadius + 5, 0, 2 * Math.PI);
+              ctx.strokeStyle = '#333';
+              ctx.lineWidth = 3;
+              ctx.stroke();
+            }
+          });
+
+          ctx.restore();
+        }
+
+        // Helper function to get node at mouse position
+        function getNodeAtMouse(x, y) {
+          const rect = canvas.getBoundingClientRect();
+          const mouseX = (x - rect.left - offsetX) / scale;
+          const mouseY = (y - rect.top - offsetY) / scale;
+
+          for (const [address, { x: nodeX, y: nodeY, node }] of Object.entries(nodePositions)) {
+            const distance = Math.sqrt(Math.pow(mouseX - nodeX, 2) + Math.pow(mouseY - nodeY, 2));
+            if (distance <= nodeRadius) {
+              return { address, node, x: nodeX, y: nodeY };
+            }
+          }
+          return null;
+        }
+
+        // Helper function to get edge at mouse position
+        function getEdgeAtMouse(x, y) {
+          const rect = canvas.getBoundingClientRect();
+          const mouseX = (x - rect.left - offsetX) / scale;
+          const mouseY = (y - rect.top - offsetY) / scale;
+
+          for (const edge of graph.edges) {
+            const fromPos = nodePositions[edge.from];
+            const toPos = nodePositions[edge.to];
+
+            if (!fromPos || !toPos) continue;
+
+            // Calculate distance from mouse to line segment
+            const dx = toPos.x - fromPos.x;
+            const dy = toPos.y - fromPos.y;
+            const length = Math.sqrt(dx * dx + dy * dy);
+
+            if (length === 0) continue;
+
+            // Project mouse point onto line segment
+            const t = Math.max(
+              0,
+              Math.min(
+                1,
+                ((mouseX - fromPos.x) * dx + (mouseY - fromPos.y) * dy) / (length * length),
+              ),
+            );
+            const projX = fromPos.x + t * dx;
+            const projY = fromPos.y + t * dy;
+
+            // Calculate distance from mouse to projected point
+            const distX = mouseX - projX;
+            const distY = mouseY - projY;
+            const distance = Math.sqrt(distX * distX + distY * distY);
+
+            // Check if mouse is within 5 pixels of the edge
+            if (distance <= 5 && t > 0 && t < 1) {
+              return edge;
+            }
+          }
+          return null;
+        }
+
+        // Mouse interactions
+        canvas.addEventListener('mousedown', (e) => {
+          const nodeAtMouse = getNodeAtMouse(e.clientX, e.clientY);
+          if (nodeAtMouse) {
+            selectedNode = nodeAtMouse.address;
+            showNodeInfo(nodeAtMouse.node);
+            drawGraph();
+          } else {
+            isDragging = true;
+            dragStartX = e.clientX - offsetX;
+            dragStartY = e.clientY - offsetY;
+          }
+        });
+
+        canvas.addEventListener('mousemove', (e) => {
+          if (isDragging) {
+            offsetX = e.clientX - dragStartX;
+            offsetY = e.clientY - dragStartY;
+            drawGraph();
+          } else {
+            const nodeAtMouse = getNodeAtMouse(e.clientX, e.clientY);
+            const edgeAtMouse = getEdgeAtMouse(e.clientX, e.clientY);
+
+            if (nodeAtMouse) {
+              canvas.style.cursor = 'pointer';
+              hoveredNode = nodeAtMouse.address;
+              hoveredEdge = null;
+              showNodeTooltip(e.clientX, e.clientY, nodeAtMouse.node);
+              drawGraph();
+            } else if (edgeAtMouse) {
+              canvas.style.cursor = 'pointer';
+              hoveredNode = null;
+              hoveredEdge = edgeAtMouse;
+              showEdgeTooltip(e.clientX, e.clientY, edgeAtMouse);
+              drawGraph();
+            } else {
+              canvas.style.cursor = 'move';
+              hoveredNode = null;
+              hoveredEdge = null;
+              tooltip.style.display = 'none';
+              drawGraph();
+            }
+          }
+        });
+
+        canvas.addEventListener('mouseup', () => {
+          isDragging = false;
+        });
+
+        canvas.addEventListener('mouseleave', () => {
+          isDragging = false;
+          hoveredNode = null;
+          hoveredEdge = null;
+          tooltip.style.display = 'none';
+          drawGraph();
+        });
+
+        function showNodeTooltip(x, y, node) {
+          const netFlowDisplay = node.summary?.netFlowUsd || 'N/A';
+          const netFlowEth = node.summary?.netFlow ? ` (${node.summary.netFlow} ETH)` : '';
+          tooltip.innerHTML = `
+                    <strong>Address</strong>
+                    <div class="tooltip-item" style="word-break: break-all; font-family: 'Courier New', monospace;">${node.address}</div>
+                    ${node.hop !== undefined ? `<strong>Hop: ${node.hop}</strong>` : ''}
+                    ${node.summary ? `<div class="tooltip-item">Transactions: ${node.summary.transactionCount}</div>` : ''}
+                    ${node.summary ? `<div class="tooltip-item">Net Flow: ${netFlowDisplay}${netFlowEth}</div>` : ''}
+                `;
+          tooltip.style.left = x + 10 + 'px';
+          tooltip.style.top = y + 10 + 'px';
+          tooltip.style.display = 'block';
+        }
+
+        function showEdgeTooltip(x, y, edge) {
+          const assetInfo = edge.asset
+            ? `<div class="tooltip-item">Asset: ${edge.asset}</div>`
+            : '';
+          const amountInfo = edge.amount
+            ? `<div class="tooltip-item">Amount: ${edge.amount}</div>`
+            : '';
+          const usdInfo = edge.usd_value
+            ? `<div class="tooltip-item">USD Value: ${edge.usd_value}</div>`
+            : '';
+          tooltip.innerHTML = `
+                    <strong>Transaction Hash</strong>
+                    <div class="tooltip-item" style="word-break: break-all; font-family: 'Courier New', monospace;">${edge.tx_hash}</div>
+                    <div class="tooltip-item">From: ${edge.from.substring(0, 10)}...${edge.from.substring(edge.from.length - 8)}</div>
+                    <div class="tooltip-item">To: ${edge.to.substring(0, 10)}...${edge.to.substring(edge.to.length - 8)}</div>
+                    ${assetInfo}
+                    ${amountInfo}
+                    ${usdInfo}
+                    ${edge.blockNumber ? `<div class="tooltip-item">Block: #${edge.blockNumber.toLocaleString()}</div>` : ''}
+                `;
+          tooltip.style.left = x + 10 + 'px';
+          tooltip.style.top = y + 10 + 'px';
+          tooltip.style.display = 'block';
+        }
+
+        function showNodeInfo(node) {
+          infoPanel.innerHTML = `
+                    <h3>Node Details</h3>
+                    <div class="info-row">
+                        <div class="info-label">Address:</div>
+                        <div class="info-value">${node.address}</div>
+                    </div>
+                    <div class="info-row">
+                        <div class="info-label">Hop Level:</div>
+                        <div class="info-value">${node.hop}</div>
+                    </div>
+                    <div class="info-row">
+                        <div class="info-label">Transactions:</div>
+                        <div class="info-value">${node.summary.transactionCount}</div>
+                    </div>
+                    <div class="info-row">
+                        <div class="info-label">Total Incoming:</div>
+                        <div class="info-value">${node.summary.totalIncoming} ETH${node.summary.totalIncomingUsd ? ' (' + node.summary.totalIncomingUsd + ')' : ''}</div>
+                    </div>
+                    <div class="info-row">
+                        <div class="info-label">Total Outgoing:</div>
+                        <div class="info-value">${node.summary.totalOutgoing} ETH${node.summary.totalOutgoingUsd ? ' (' + node.summary.totalOutgoingUsd + ')' : ''}</div>
+                    </div>
+                    <div class="info-row">
+                        <div class="info-label">Net Flow:</div>
+                        <div class="info-value">${node.summary.netFlowUsd || 'N/A'}${node.summary.netFlow ? ' (' + node.summary.netFlow + ' ETH)' : ''}</div>
+                    </div>
+                `;
+          infoPanel.style.display = 'block';
+        }
+
+        // Zoom functions
+        window.zoomGraph = function (factor) {
+          scale *= factor;
+          drawGraph();
+        };
+
+        window.resetGraphView = function () {
+          scale = 1;
+          offsetX = 0;
+          offsetY = 0;
+          drawGraph();
+        };
+
+        // Initial draw
+        drawGraph();
+      }
+    </script>
+  </body>
+</html>
