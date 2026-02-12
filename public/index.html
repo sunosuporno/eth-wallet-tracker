@@ -287,6 +287,108 @@
         font-family: 'Courier New', monospace;
         font-size: 12px;
         word-break: break-all;
+        cursor: pointer;
+        transition: background-color 0.2s, transform 0.1s;
+      }
+
+      .address-item:hover {
+        background: #e9ecef;
+        transform: translateY(-1px);
+      }
+
+      .address-item.loading {
+        opacity: 0.6;
+        cursor: wait;
+      }
+
+      .balance-panel {
+        margin-top: 20px;
+        padding: 20px;
+        background: #f8f9fa;
+        border-radius: 8px;
+        border-left: 4px solid #667eea;
+      }
+
+      .balance-panel h3 {
+        margin-bottom: 15px;
+        color: #333;
+        display: flex;
+        align-items: center;
+        gap: 10px;
+      }
+
+      .balance-panel .close-btn {
+        margin-left: auto;
+        background: #dc3545;
+        color: white;
+        border: none;
+        padding: 6px 12px;
+        border-radius: 4px;
+        cursor: pointer;
+        font-size: 12px;
+      }
+
+      .balance-panel .close-btn:hover {
+        background: #c82333;
+      }
+
+      .balance-list {
+        display: grid;
+        gap: 10px;
+      }
+
+      .balance-item {
+        background: white;
+        padding: 15px;
+        border-radius: 6px;
+        border: 1px solid #e0e0e0;
+        display: flex;
+        justify-content: space-between;
+        align-items: center;
+      }
+
+      .balance-item .token-info {
+        flex: 1;
+      }
+
+      .balance-item .token-name {
+        font-weight: 600;
+        color: #333;
+        margin-bottom: 4px;
+      }
+
+      .balance-item .token-address {
+        font-family: 'Courier New', monospace;
+        font-size: 11px;
+        color: #666;
+        word-break: break-all;
+      }
+
+      .balance-item .token-balance {
+        text-align: right;
+        font-weight: 600;
+        color: #10b981;
+      }
+
+      .balance-item .token-balance .balance-amount {
+        font-size: 16px;
+        margin-bottom: 2px;
+      }
+
+      .balance-item .token-balance .balance-usd {
+        font-size: 12px;
+        color: #666;
+        font-weight: normal;
+      }
+
+      .balance-item.native-token {
+        border-left: 4px solid #667eea;
+      }
+
+      .balance-empty {
+        text-align: center;
+        padding: 20px;
+        color: #999;
       }
 
       .graph-container {
@@ -395,6 +497,58 @@
         font-family: 'Courier New', monospace;
         word-break: break-all;
       }
+
+      label[for="graphFileInput"]:hover {
+        transform: translateY(-2px);
+        box-shadow: 0 5px 20px rgba(16, 185, 129, 0.4);
+      }
+
+      .spam-tokens-section {
+        margin-top: 20px;
+        border-top: 2px solid #e0e0e0;
+        padding-top: 15px;
+      }
+
+      .spam-tokens-header {
+        display: flex;
+        align-items: center;
+        justify-content: space-between;
+        cursor: pointer;
+        padding: 10px;
+        background: #f8f9fa;
+        border-radius: 6px;
+        margin-bottom: 10px;
+        transition: background-color 0.2s;
+      }
+
+      .spam-tokens-header:hover {
+        background: #e9ecef;
+      }
+
+      .spam-tokens-header h4 {
+        margin: 0;
+        color: #666;
+        font-size: 14px;
+        font-weight: 600;
+      }
+
+      .spam-tokens-toggle {
+        font-size: 12px;
+        color: #667eea;
+        font-weight: 500;
+      }
+
+      .spam-tokens-content {
+        display: none;
+      }
+
+      .spam-tokens-content.expanded {
+        display: block;
+      }
+
+      .spam-token-item {
+        opacity: 0.7;
+      }
     </style>
   </head>
   <body>
@@ -452,6 +606,23 @@
           </div>
           <button type="submit" id="submitBtn">Trace Wallet</button>
         </form>
+      </div>
+
+      <div class="card">
+        <h2 style="margin-bottom: 20px;">Load Graph from File</h2>
+        <div style="display: flex; gap: 10px; align-items: center; flex-wrap: wrap;">
+          <button type="button" id="loadGraphBtn" style="width: auto; min-width: 200px;">
+            📊 Load Graph from graph.json
+          </button>
+          <span style="color: #666; font-size: 14px;">or</span>
+          <label for="graphFileInput" style="cursor: pointer; padding: 14px 30px; background: linear-gradient(135deg, #10b981 0%, #059669 100%); color: white; border-radius: 8px; font-size: 16px; font-weight: 600; display: inline-block; transition: transform 0.2s, box-shadow 0.2s;">
+            📁 Upload graph.json File
+            <input type="file" id="graphFileInput" accept=".json" style="display: none;" />
+          </label>
+        </div>
+        <small style="color: #666; font-size: 12px; display: block; margin-top: 8px;">
+          Load a previously saved graph from graph.json file (generated after tracing a wallet) or upload your own graph.json file
+        </small>
       </div>
 
       <div id="errorContainer"></div>
@@ -675,7 +846,7 @@
                             ${
                               receivedFrom.length > 0
                                 ? receivedFrom
-                                    .map((addr) => `<div class="address-item">${addr}</div>`)
+                                    .map((addr) => `<div class="address-item" data-address="${addr}" onclick="fetchWalletBalances('${addr}')">${addr}</div>`)
                                     .join('')
                                 : '<div class="address-item" style="color: #999;">No addresses</div>'
                             }
@@ -687,7 +858,7 @@
                             ${
                               sentTo.length > 0
                                 ? sentTo
-                                    .map((addr) => `<div class="address-item">${addr}</div>`)
+                                    .map((addr) => `<div class="address-item" data-address="${addr}" onclick="fetchWalletBalances('${addr}')">${addr}</div>`)
                                     .join('')
                                 : '<div class="address-item" style="color: #999;">No addresses</div>'
                             }
@@ -855,7 +1026,25 @@
         const centerY = canvas.height / 2;
         const nodesByHop = {};
 
-        graph.nodes.forEach((node) => {
+        // Normalize nodes to ensure they all have required properties
+        const normalizedNodes = graph.nodes.map((node) => {
+          return {
+            address: (node.address || '').toLowerCase(),
+            hop: node.hop !== undefined ? node.hop : 0,
+            is_contract: node.is_contract || false,
+            summary: node.summary || {
+              transactionCount: 0,
+              totalIncoming: '0',
+              totalOutgoing: '0',
+              totalIncomingUsd: 'N/A',
+              totalOutgoingUsd: 'N/A',
+              netFlow: '0',
+              netFlowUsd: 'N/A',
+            },
+          };
+        });
+
+        normalizedNodes.forEach((node) => {
           if (!nodesByHop[node.hop]) {
             nodesByHop[node.hop] = [];
           }
@@ -1082,12 +1271,93 @@
         }
 
         // Mouse interactions
-        canvas.addEventListener('mousedown', (e) => {
+        canvas.addEventListener('mousedown', async (e) => {
           const nodeAtMouse = getNodeAtMouse(e.clientX, e.clientY);
-          if (nodeAtMouse) {
+          console.log('Canvas mousedown, nodeAtMouse:', nodeAtMouse);
+          if (nodeAtMouse && nodeAtMouse.node && nodeAtMouse.address) {
+            e.preventDefault(); // Prevent dragging when clicking a node
+            e.stopPropagation(); // Stop event propagation
+            console.log('Node clicked:', nodeAtMouse.address);
             selectedNode = nodeAtMouse.address;
-            showNodeInfo(nodeAtMouse.node);
+            
+            // Hide node info panel since we'll show detailed balances instead
+            const infoPanel = document.getElementById('nodeInfoPanel');
+            if (infoPanel) {
+              infoPanel.style.display = 'none';
+            }
+            
             drawGraph();
+            
+            // Fetch and display wallet balances
+            try {
+              console.log('Fetching balances for:', nodeAtMouse.address);
+              // Show loading in tooltip
+              const loadingTooltip = document.getElementById('nodeTooltip');
+              if (loadingTooltip) {
+                loadingTooltip.innerHTML = `
+                  <strong>Loading balances...</strong>
+                  <div class="tooltip-item">Address: ${nodeAtMouse.address.substring(0, 10)}...</div>
+                `;
+                loadingTooltip.style.display = 'block';
+              }
+              
+              // Remove any existing balance panel
+              const existingPanel = document.getElementById('walletBalancePanel');
+              if (existingPanel) {
+                existingPanel.remove();
+              }
+
+              // Fetch balances directly
+              const apiUrl = `${API_BASE}/wallet/balances?address=${encodeURIComponent(nodeAtMouse.address)}`;
+              console.log('Fetching from:', apiUrl);
+              const response = await fetch(apiUrl);
+              
+              if (!response.ok) {
+                const errorData = await response.json().catch(() => ({ message: response.statusText }));
+                throw new Error(errorData.message || `Failed to fetch wallet balances: ${response.status} ${response.statusText}`);
+              }
+              
+              const data = await response.json();
+              console.log('Balance data received:', data);
+              
+              // Validate response structure
+              if (!data || typeof data !== 'object') {
+                throw new Error('Invalid response format from server');
+              }
+              
+              // Ensure tokens array exists
+              if (!Array.isArray(data.tokens)) {
+                console.warn('Response does not have tokens array, creating empty array');
+                data.tokens = [];
+              }
+
+              // Hide loading tooltip
+              if (loadingTooltip) {
+                loadingTooltip.style.display = 'none';
+              }
+
+              // Display balances - try multiple approaches
+              console.log('Attempting to display balances, data:', data);
+              if (typeof window.displayWalletBalances === 'function') {
+                console.log('Using window.displayWalletBalances');
+                window.displayWalletBalances(nodeAtMouse.address, data);
+              } else if (typeof displayWalletBalances === 'function') {
+                console.log('Using local displayWalletBalances');
+                displayWalletBalances(nodeAtMouse.address, data);
+              } else {
+                console.error('displayWalletBalances function not found!');
+                // Fallback: create panel inline
+                console.log('Using fallback createBalancePanelInline');
+                createBalancePanelInline(nodeAtMouse.address, data);
+              }
+            } catch (error) {
+              console.error('Error fetching balances for node:', error);
+              const loadingTooltip = document.getElementById('nodeTooltip');
+              if (loadingTooltip) {
+                loadingTooltip.style.display = 'none';
+              }
+              alert(`Error fetching balances: ${error.message}`);
+            }
           } else {
             isDragging = true;
             dragStartX = e.clientX - offsetX;
@@ -1139,14 +1409,15 @@
         });
 
         function showNodeTooltip(x, y, node) {
-          const netFlowDisplay = node.summary?.netFlowUsd || 'N/A';
-          const netFlowEth = node.summary?.netFlow ? ` (${node.summary.netFlow} ETH)` : '';
+          if (!node) {
+            console.error('showNodeTooltip called with null/undefined node');
+            return;
+          }
+          
           tooltip.innerHTML = `
                     <strong>Address</strong>
-                    <div class="tooltip-item" style="word-break: break-all; font-family: 'Courier New', monospace;">${node.address}</div>
+                    <div class="tooltip-item" style="word-break: break-all; font-family: 'Courier New', monospace;">${node.address || 'N/A'}</div>
                     ${node.hop !== undefined ? `<strong>Hop: ${node.hop}</strong>` : ''}
-                    ${node.summary ? `<div class="tooltip-item">Transactions: ${node.summary.transactionCount}</div>` : ''}
-                    ${node.summary ? `<div class="tooltip-item">Net Flow: ${netFlowDisplay}${netFlowEth}</div>` : ''}
                 `;
           tooltip.style.left = x + 10 + 'px';
           tooltip.style.top = y + 10 + 'px';
@@ -1179,31 +1450,45 @@
         }
 
         function showNodeInfo(node) {
+          if (!node) {
+            console.error('showNodeInfo called with null/undefined node');
+            return;
+          }
+          
+          const summary = node.summary || {};
+          const transactionCount = summary.transactionCount || 0;
+          const totalIncoming = summary.totalIncoming || '0';
+          const totalIncomingUsd = summary.totalIncomingUsd || '';
+          const totalOutgoing = summary.totalOutgoing || '0';
+          const totalOutgoingUsd = summary.totalOutgoingUsd || '';
+          const netFlowUsd = summary.netFlowUsd || 'N/A';
+          const netFlow = summary.netFlow || '';
+          
           infoPanel.innerHTML = `
                     <h3>Node Details</h3>
                     <div class="info-row">
                         <div class="info-label">Address:</div>
-                        <div class="info-value">${node.address}</div>
+                        <div class="info-value">${node.address || 'N/A'}</div>
                     </div>
                     <div class="info-row">
                         <div class="info-label">Hop Level:</div>
-                        <div class="info-value">${node.hop}</div>
+                        <div class="info-value">${node.hop !== undefined ? node.hop : 'N/A'}</div>
                     </div>
                     <div class="info-row">
                         <div class="info-label">Transactions:</div>
-                        <div class="info-value">${node.summary.transactionCount}</div>
+                        <div class="info-value">${transactionCount}</div>
                     </div>
                     <div class="info-row">
                         <div class="info-label">Total Incoming:</div>
-                        <div class="info-value">${node.summary.totalIncoming} ETH${node.summary.totalIncomingUsd ? ' (' + node.summary.totalIncomingUsd + ')' : ''}</div>
+                        <div class="info-value">${totalIncoming} ETH${totalIncomingUsd ? ' (' + totalIncomingUsd + ')' : ''}</div>
                     </div>
                     <div class="info-row">
                         <div class="info-label">Total Outgoing:</div>
-                        <div class="info-value">${node.summary.totalOutgoing} ETH${node.summary.totalOutgoingUsd ? ' (' + node.summary.totalOutgoingUsd + ')' : ''}</div>
+                        <div class="info-value">${totalOutgoing} ETH${totalOutgoingUsd ? ' (' + totalOutgoingUsd + ')' : ''}</div>
                     </div>
                     <div class="info-row">
                         <div class="info-label">Net Flow:</div>
-                        <div class="info-value">${node.summary.netFlowUsd || 'N/A'}${node.summary.netFlow ? ' (' + node.summary.netFlow + ' ETH)' : ''}</div>
+                        <div class="info-value">${netFlowUsd}${netFlow ? ' (' + netFlow + ' ETH)' : ''}</div>
                     </div>
                 `;
           infoPanel.style.display = 'block';
@@ -1224,6 +1509,731 @@
 
         // Initial draw
         drawGraph();
+      }
+
+      // Helper function for graph nodes to fetch balances
+      async function fetchWalletBalancesForNode(address) {
+        // Remove any existing balance panel
+        const existingPanel = document.getElementById('walletBalancePanel');
+        if (existingPanel) {
+          existingPanel.remove();
+        }
+
+        try {
+          const response = await fetch(`${API_BASE}/wallet/balances?address=${encodeURIComponent(address)}`);
+          const data = await response.json();
+
+          if (!response.ok) {
+            throw new Error(data.message || 'Failed to fetch wallet balances');
+          }
+
+          // Display balances
+          displayWalletBalances(address, data);
+        } catch (error) {
+          console.error('Error fetching balances:', error);
+          throw error; // Re-throw to be handled by caller
+        }
+      }
+
+      // Function to fetch and display wallet balances
+      async function fetchWalletBalances(address) {
+        // Remove any existing balance panel
+        const existingPanel = document.getElementById('walletBalancePanel');
+        if (existingPanel) {
+          existingPanel.remove();
+        }
+
+        // Find the clicked address item
+        const addressItems = document.querySelectorAll('.address-item');
+        addressItems.forEach((item) => {
+          if (item.dataset.address === address) {
+            item.classList.add('loading');
+          }
+        });
+
+        try {
+          const response = await fetch(`${API_BASE}/wallet/balances?address=${encodeURIComponent(address)}`);
+          const data = await response.json();
+
+          if (!response.ok) {
+            throw new Error(data.message || 'Failed to fetch wallet balances');
+          }
+
+          // Remove loading state
+          addressItems.forEach((item) => {
+            if (item.dataset.address === address) {
+              item.classList.remove('loading');
+            }
+          });
+
+          // Display balances
+          displayWalletBalances(address, data);
+        } catch (error) {
+          console.error('Error fetching balances:', error);
+          // Remove loading state
+          addressItems.forEach((item) => {
+            if (item.dataset.address === address) {
+              item.classList.remove('loading');
+            }
+          });
+          alert(`Error fetching balances: ${error.message}`);
+        }
+      }
+
+      // Make functions globally accessible
+      window.fetchWalletBalances = fetchWalletBalances;
+
+      function displayWalletBalances(address, balanceData) {
+        console.log('displayWalletBalances called with:', address, balanceData);
+        
+        // Validate balanceData structure
+        if (!balanceData) {
+          console.error('balanceData is null or undefined');
+          alert('Error: No balance data received');
+          return;
+        }
+        
+        const tokens = balanceData.tokens || [];
+        console.log(`Found ${tokens.length} tokens for address ${address}`);
+        
+        // Remove existing panel first
+        const existingPanel = document.getElementById('walletBalancePanel');
+        if (existingPanel) {
+          existingPanel.remove();
+        }
+        
+        // Find the best place to insert the balance panel
+        // Try addresses section first, then results container, then graph container
+        let insertTarget = null;
+        let insertMethod = 'after'; // 'after' or 'append'
+        
+        const addressesSection = document.querySelector('.addresses-section');
+        const resultsContainer = document.getElementById('resultsContainer');
+        const graphContainer = document.querySelector('.graph-container');
+        
+        if (addressesSection) {
+          insertTarget = addressesSection;
+          insertMethod = 'after';
+        } else if (resultsContainer) {
+          insertTarget = resultsContainer;
+          insertMethod = 'append';
+        } else if (graphContainer) {
+          insertTarget = graphContainer;
+          insertMethod = 'after';
+        } else {
+          // Last resort: create a new card in results container or create results container
+          if (!resultsContainer) {
+            const newResultsContainer = document.createElement('div');
+            newResultsContainer.id = 'resultsContainer';
+            document.querySelector('.container').appendChild(newResultsContainer);
+            insertTarget = newResultsContainer;
+            insertMethod = 'append';
+          } else {
+            insertTarget = resultsContainer;
+            insertMethod = 'append';
+          }
+        }
+        
+        if (!insertTarget) {
+          console.error('Could not find any target to insert balance panel');
+          alert('Could not display balances: no container found');
+          return;
+        }
+
+        // Create balance panel
+        const balancePanel = document.createElement('div');
+        balancePanel.id = 'walletBalancePanel';
+        balancePanel.className = 'balance-panel';
+        
+        let balanceHtml = `
+          <h3>
+            💰 Token Balances for ${address.substring(0, 10)}...${address.substring(address.length - 8)}
+            <button class="close-btn" onclick="document.getElementById('walletBalancePanel').remove()">Close</button>
+          </h3>
+          <div class="balance-list">
+        `;
+
+        if (tokens.length === 0) {
+          balanceHtml += '<div class="balance-empty">No token balances found</div>';
+        } else {
+          // Helper function to determine if a token is spam
+          const isSpamToken = (token) => {
+            // Native tokens are never spam
+            if (!token.tokenAddress) {
+              return false;
+            }
+
+            // Check if contract is unverified
+            if (token.isContractVerified === false) {
+              return true;
+            }
+
+            // Check for zero or near-zero balance
+            const balance = token.tokenBalance || '0';
+            const decimals = token.decimals !== undefined && token.decimals !== null ? token.decimals : null;
+            
+            if (decimals !== null && decimals !== undefined) {
+              try {
+                const balanceBigInt = BigInt(balance);
+                const divisor = BigInt(10 ** decimals);
+                const normalized = Number(balanceBigInt) / Number(divisor);
+                // Consider tokens with balance < 0.000001 as spam
+                if (normalized < 0.000001) {
+                  return true;
+                }
+              } catch (e) {
+                // If we can't parse, check if raw balance is zero
+                if (balance === '0' || balance === '0x0') {
+                  return true;
+                }
+              }
+            } else {
+              // No decimals, check if raw balance is zero
+              if (balance === '0' || balance === '0x0') {
+                return true;
+              }
+            }
+
+            return false;
+          };
+
+          // Helper function to render a token item
+          const renderTokenItem = (token, isSpam = false) => {
+            const isNative = !token.tokenAddress;
+            const balance = token.tokenBalance || '0';
+            const network = token.network || 'Unknown';
+
+            // Get token metadata
+            const tokenName = token.tokenName || null;
+            const tokenSymbol = token.tokenSymbol || null;
+            const decimals = token.decimals !== undefined && token.decimals !== null ? token.decimals : null;
+
+            // Format balance - for native tokens, convert from wei
+            let displayBalance = balance;
+            let displaySymbol = 'ETH';
+            let rawBalance = balance;
+            let normalizedBalance = null;
+
+            if (isNative) {
+              // Convert from wei to ETH
+              try {
+                const balanceWei = BigInt(balance);
+                const divisor = BigInt('1000000000000000000');
+                const balanceEth = Number(balanceWei) / Number(divisor);
+                displayBalance = balanceEth.toFixed(6).replace(/\.?0+$/, '');
+                displaySymbol = network === 'eth-mainnet' ? 'ETH' : 'Native';
+                rawBalance = balanceWei.toString();
+                normalizedBalance = balanceEth;
+              } catch (e) {
+                console.error('Error formatting native token balance:', e);
+                displayBalance = balance;
+              }
+            } else {
+              // For ERC-20 tokens, normalize using decimals if available
+              try {
+                const balanceBigInt = BigInt(balance);
+                rawBalance = balanceBigInt.toString();
+
+                if (decimals !== null && decimals !== undefined) {
+                  // Normalize using decimals: balance / (10 ** decimals)
+                  const divisor = BigInt(10 ** decimals);
+                  const normalized = Number(balanceBigInt) / Number(divisor);
+                  normalizedBalance = normalized;
+                  displayBalance = normalized.toFixed(6).replace(/\.?0+$/, '');
+                  displaySymbol = tokenSymbol || 'Tokens';
+                } else {
+                  // No decimals available, show raw value
+                  displayBalance = balanceBigInt.toLocaleString('en-US');
+                  displaySymbol = tokenSymbol ? `${tokenSymbol} (raw)` : 'Tokens (raw)';
+                }
+              } catch (e) {
+                console.error('Error formatting ERC-20 token balance:', e);
+                displayBalance = balance;
+                displaySymbol = tokenSymbol || 'Tokens';
+              }
+            }
+
+            // Determine display name
+            let tokenDisplayName = '';
+            if (isNative) {
+              tokenDisplayName = `🌐 Native Token (${displaySymbol})`;
+            } else {
+              if (tokenName && tokenSymbol) {
+                tokenDisplayName = `🪙 ${tokenName} (${tokenSymbol})`;
+              } else if (tokenSymbol) {
+                tokenDisplayName = `🪙 ${tokenSymbol}`;
+              } else if (tokenName) {
+                tokenDisplayName = `🪙 ${tokenName}`;
+              } else {
+                tokenDisplayName = '🪙 ERC-20 Token';
+              }
+            }
+
+            const spamClass = isSpam ? ' spam-token-item' : '';
+            const verificationBadge = !isNative && token.isContractVerified === false
+              ? '<span style="font-size: 10px; color: #ef4444; margin-left: 8px;">⚠️ Unverified</span>'
+              : '';
+
+            return `
+              <div class="balance-item${isNative ? ' native-token' : ''}${spamClass}">
+                <div class="token-info">
+                  <div class="token-name">
+                    ${tokenDisplayName}${verificationBadge}
+                  </div>
+                  ${!isNative ? `<div class="token-address">${token.tokenAddress}</div>` : ''}
+                  <div style="font-size: 11px; color: #999; margin-top: 4px;">
+                    Network: ${network}
+                    ${!isNative && decimals !== null ? ` • Decimals: ${decimals}` : ''}
+                  </div>
+                </div>
+                <div class="token-balance">
+                  <div class="balance-amount">${displayBalance} ${displaySymbol}</div>
+                  ${!isNative && normalizedBalance !== null ? `<div class="balance-usd" style="font-size: 11px; color: #666; margin-top: 2px;">Normalized: ${normalizedBalance.toLocaleString('en-US', { maximumFractionDigits: 6 })}</div>` : ''}
+                  ${!isNative && rawBalance !== balance ? `<div class="balance-usd" style="font-size: 10px; color: #999; margin-top: 2px;">Raw: ${rawBalance}</div>` : ''}
+                </div>
+              </div>
+            `;
+          };
+
+          // Separate tokens into spam and non-spam
+          const spamTokens = [];
+          const nonSpamTokens = [];
+
+          tokens.forEach((token) => {
+            if (isSpamToken(token)) {
+              spamTokens.push(token);
+            } else {
+              nonSpamTokens.push(token);
+            }
+          });
+
+          // Sort non-spam tokens: native token first, then by balance (descending)
+          const sortedNonSpamTokens = [...nonSpamTokens].sort((a, b) => {
+            // Native token (null address) first
+            if (!a.tokenAddress && b.tokenAddress) return -1;
+            if (a.tokenAddress && !b.tokenAddress) return 1;
+            // Then sort by balance (descending)
+            const balanceA = parseFloat(a.tokenBalance || '0');
+            const balanceB = parseFloat(b.tokenBalance || '0');
+            return balanceB - balanceA;
+          });
+
+          // Sort spam tokens: by balance (descending)
+          const sortedSpamTokens = [...spamTokens].sort((a, b) => {
+            const balanceA = parseFloat(a.tokenBalance || '0');
+            const balanceB = parseFloat(b.tokenBalance || '0');
+            return balanceB - balanceA;
+          });
+
+          // Render non-spam tokens
+          sortedNonSpamTokens.forEach((token) => {
+            balanceHtml += renderTokenItem(token, false);
+          });
+
+          // Add spam tokens section if there are any
+          if (sortedSpamTokens.length > 0) {
+            const spamSectionId = `spam-tokens-${Date.now()}`;
+            balanceHtml += `
+              <div class="spam-tokens-section">
+                <div class="spam-tokens-header" onclick="toggleSpamTokens('${spamSectionId}')">
+                  <h4>⚠️ Spam Tokens (${sortedSpamTokens.length})</h4>
+                  <span class="spam-tokens-toggle" id="${spamSectionId}-toggle">▼ Show</span>
+                </div>
+                <div class="spam-tokens-content" id="${spamSectionId}">
+            `;
+
+            sortedSpamTokens.forEach((token) => {
+              balanceHtml += renderTokenItem(token, true);
+            });
+
+            balanceHtml += `
+                </div>
+              </div>
+            `;
+          }
+        }
+
+        balanceHtml += '</div>';
+        balancePanel.innerHTML = balanceHtml;
+
+        // Insert the balance panel
+        if (insertMethod === 'after' && insertTarget.parentNode) {
+          insertTarget.parentNode.insertBefore(balancePanel, insertTarget.nextSibling);
+        } else {
+          insertTarget.appendChild(balancePanel);
+        }
+
+        console.log('Balance panel inserted successfully');
+        
+        // Update Node Details panel with balance summary if it exists
+        const infoPanel = document.getElementById('nodeInfoPanel');
+        if (infoPanel) {
+          // Calculate totals from balances
+          let totalNativeBalance = 0;
+          let totalTokenCount = 0;
+          let hasBalances = false;
+          
+          tokens.forEach((token) => {
+            if (!token.tokenAddress) {
+              // Native token
+              try {
+                const balanceWei = BigInt(token.tokenBalance || '0');
+                const divisor = BigInt('1000000000000000000');
+                totalNativeBalance = Number(balanceWei) / Number(divisor);
+                hasBalances = true;
+              } catch (e) {
+                // Ignore
+              }
+            } else {
+              totalTokenCount++;
+              hasBalances = true;
+            }
+          });
+          
+          if (hasBalances) {
+            infoPanel.innerHTML = `
+              <h3>Node Details</h3>
+              <div class="info-row">
+                <div class="info-label">Address:</div>
+                <div class="info-value">${address}</div>
+              </div>
+              <div class="info-row">
+                <div class="info-label">Native Balance:</div>
+                <div class="info-value">${totalNativeBalance.toFixed(6)} ETH</div>
+              </div>
+              <div class="info-row">
+                <div class="info-label">Token Count:</div>
+                <div class="info-value">${totalTokenCount} token${totalTokenCount !== 1 ? 's' : ''}</div>
+              </div>
+              <div class="info-row">
+                <div class="info-label">Total Tokens:</div>
+                <div class="info-value">${tokens.length} balance${tokens.length !== 1 ? 's' : ''}</div>
+              </div>
+            `;
+            infoPanel.style.display = 'block';
+          } else {
+            // Hide if no balances
+            infoPanel.style.display = 'none';
+          }
+        }
+        
+        // Show success message briefly
+        const successMsg = document.createElement('div');
+        successMsg.style.cssText = 'position: fixed; top: 20px; right: 20px; background: #10b981; color: white; padding: 12px 20px; border-radius: 8px; z-index: 10000; box-shadow: 0 4px 12px rgba(0,0,0,0.2);';
+        successMsg.textContent = `✅ Loaded ${tokens.length} token balance${tokens.length !== 1 ? 's' : ''}`;
+        document.body.appendChild(successMsg);
+        setTimeout(() => {
+          successMsg.remove();
+        }, 3000);
+        
+        // Scroll to the balance panel
+        balancePanel.scrollIntoView({ behavior: 'smooth', block: 'nearest' });
+      }
+
+      // Make displayWalletBalances globally accessible
+      window.displayWalletBalances = displayWalletBalances;
+
+      // Toggle spam tokens dropdown
+      function toggleSpamTokens(sectionId) {
+        const content = document.getElementById(sectionId);
+        const toggle = document.getElementById(`${sectionId}-toggle`);
+        
+        if (content && toggle) {
+          if (content.classList.contains('expanded')) {
+            content.classList.remove('expanded');
+            toggle.textContent = '▼ Show';
+          } else {
+            content.classList.add('expanded');
+            toggle.textContent = '▲ Hide';
+          }
+        }
+      }
+
+      // Make toggleSpamTokens globally accessible
+      window.toggleSpamTokens = toggleSpamTokens;
+
+      // Function to load graph from graph.json file
+      async function loadGraphFromFile() {
+        try {
+          const response = await fetch(`${API_BASE}/wallet/graph`);
+          if (!response.ok) {
+            if (response.status === 404) {
+              throw new Error('graph.json file not found. Please run a wallet trace first to generate the graph.');
+            }
+            throw new Error(`Failed to load graph.json: ${response.statusText}`);
+          }
+          const graphData = await response.json();
+          validateAndRenderGraph(graphData);
+        } catch (error) {
+          console.error('Error loading graph.json:', error);
+          document.getElementById('errorContainer').innerHTML =
+            `<div class="error">❌ Error loading graph.json: ${error.message}</div>`;
+        }
+      }
+
+      // Function to handle file upload
+      function handleGraphFileUpload(event) {
+        const file = event.target.files[0];
+        if (!file) {
+          return;
+        }
+
+        if (!file.name.endsWith('.json')) {
+          document.getElementById('errorContainer').innerHTML =
+            '<div class="error">❌ Please select a JSON file</div>';
+          return;
+        }
+
+        const reader = new FileReader();
+        reader.onload = (e) => {
+          try {
+            const graphData = JSON.parse(e.target.result);
+            validateAndRenderGraph(graphData);
+          } catch (error) {
+            console.error('Error parsing graph file:', error);
+            document.getElementById('errorContainer').innerHTML =
+              `<div class="error">❌ Error parsing JSON file: ${error.message}</div>`;
+          }
+        };
+        reader.onerror = () => {
+          document.getElementById('errorContainer').innerHTML =
+            '<div class="error">❌ Error reading file</div>';
+        };
+        reader.readAsText(file);
+      }
+
+      // Function to validate and render graph
+      function validateAndRenderGraph(graphData) {
+        // Clear previous errors
+        document.getElementById('errorContainer').innerHTML = '';
+        
+        // Validate graph structure
+        if (!graphData || typeof graphData !== 'object') {
+          throw new Error('Invalid graph data: must be an object');
+        }
+
+        if (!graphData.nodes || !Array.isArray(graphData.nodes)) {
+          throw new Error('Invalid graph data: missing or invalid nodes array');
+        }
+
+        if (!graphData.edges || !Array.isArray(graphData.edges)) {
+          throw new Error('Invalid graph data: missing or invalid edges array');
+        }
+
+        if (!graphData.centerNode || typeof graphData.centerNode !== 'string') {
+          throw new Error('Invalid graph data: missing or invalid centerNode');
+        }
+
+        // Ensure nodes have required properties
+        const validatedNodes = graphData.nodes.map((node) => {
+          if (!node.address) {
+            throw new Error('Invalid node: missing address');
+          }
+          return {
+            address: node.address.toLowerCase(),
+            hop: node.hop !== undefined ? node.hop : 0,
+            is_contract: node.is_contract || false,
+            summary: node.summary || {
+              transactionCount: 0,
+              totalIncoming: '0',
+              totalOutgoing: '0',
+              totalIncomingUsd: 'N/A',
+              totalOutgoingUsd: 'N/A',
+              netFlow: '0',
+              netFlowUsd: 'N/A',
+            },
+          };
+        });
+
+        // Ensure edges have required properties
+        const validatedEdges = graphData.edges.map((edge) => {
+          if (!edge.from || !edge.to) {
+            throw new Error('Invalid edge: missing from or to address');
+          }
+          return {
+            from: edge.from.toLowerCase(),
+            to: edge.to.toLowerCase(),
+            tx_hash: edge.tx_hash || '',
+            timestamp: edge.timestamp || 0,
+            blockNumber: edge.blockNumber || 0,
+            asset: edge.asset || 'ETH',
+            amount: edge.amount || '0',
+            usd_value: edge.usd_value || 'N/A',
+          };
+        });
+
+        // Create validated graph object
+        const validatedGraph = {
+          centerNode: graphData.centerNode.toLowerCase(),
+          nodes: validatedNodes,
+          edges: validatedEdges,
+        };
+
+        // Clear previous results
+        document.getElementById('resultsContainer').innerHTML = '';
+
+        // Render the graph
+        renderGraph(validatedGraph);
+
+        // Show success message
+        document.getElementById('errorContainer').innerHTML =
+          `<div style="background: #d1fae5; border: 2px solid #10b981; color: #065f46; padding: 15px; border-radius: 8px; margin-bottom: 20px;">
+            ✅ Graph loaded successfully! (${validatedGraph.nodes.length} nodes, ${validatedGraph.edges.length} edges)
+          </div>`;
+      }
+
+      // Attach event listeners
+      document.getElementById('loadGraphBtn').addEventListener('click', loadGraphFromFile);
+      document.getElementById('graphFileInput').addEventListener('change', handleGraphFileUpload);
+
+      // Fallback inline function to create balance panel
+      function createBalancePanelInline(address, balanceData) {
+        const tokens = balanceData.tokens || [];
+        
+        // Find the addresses section or results container
+        const addressesSection = document.querySelector('.addresses-section');
+        const resultsContainer = document.getElementById('resultsContainer');
+        const insertTarget = addressesSection || resultsContainer;
+        
+        if (!insertTarget) {
+          console.error('Could not find target to insert balance panel');
+          return;
+        }
+
+        // Remove existing panel
+        const existingPanel = document.getElementById('walletBalancePanel');
+        if (existingPanel) {
+          existingPanel.remove();
+        }
+
+        // Create balance panel
+        const balancePanel = document.createElement('div');
+        balancePanel.id = 'walletBalancePanel';
+        balancePanel.className = 'balance-panel';
+        
+        let balanceHtml = `
+          <h3>
+            💰 Token Balances for ${address.substring(0, 10)}...${address.substring(address.length - 8)}
+            <button class="close-btn" onclick="document.getElementById('walletBalancePanel').remove()">Close</button>
+          </h3>
+          <div class="balance-list">
+        `;
+
+        if (tokens.length === 0) {
+          balanceHtml += '<div class="balance-empty">No token balances found</div>';
+        } else {
+          const sortedTokens = [...tokens].sort((a, b) => {
+            if (!a.tokenAddress && b.tokenAddress) return -1;
+            if (a.tokenAddress && !b.tokenAddress) return 1;
+            const balanceA = parseFloat(a.tokenBalance || '0');
+            const balanceB = parseFloat(b.tokenBalance || '0');
+            return balanceB - balanceA;
+          });
+
+          sortedTokens.forEach((token) => {
+            const isNative = !token.tokenAddress;
+            const balance = token.tokenBalance || '0';
+            const network = token.network || 'Unknown';
+            
+            // Get token metadata
+            const tokenName = token.tokenName || null;
+            const tokenSymbol = token.tokenSymbol || null;
+            const decimals = token.decimals !== undefined && token.decimals !== null ? token.decimals : null;
+            
+            // Format balance - for native tokens, convert from wei
+            let displayBalance = balance;
+            let displaySymbol = 'ETH';
+            let rawBalance = balance;
+            let normalizedBalance = null;
+            
+            if (isNative) {
+              // Convert from wei to ETH
+              try {
+                const balanceWei = BigInt(balance);
+                const divisor = BigInt('1000000000000000000');
+                const balanceEth = Number(balanceWei) / Number(divisor);
+                displayBalance = balanceEth.toFixed(6).replace(/\.?0+$/, '');
+                displaySymbol = network === 'eth-mainnet' ? 'ETH' : 'Native';
+                rawBalance = balanceWei.toString();
+                normalizedBalance = balanceEth;
+              } catch (e) {
+                console.error('Error formatting native token balance:', e);
+                displayBalance = balance;
+              }
+            } else {
+              // For ERC-20 tokens, normalize using decimals if available
+              try {
+                const balanceBigInt = BigInt(balance);
+                rawBalance = balanceBigInt.toString();
+                
+                if (decimals !== null && decimals !== undefined) {
+                  // Normalize using decimals: balance / (10 ** decimals)
+                  const divisor = BigInt(10 ** decimals);
+                  const normalized = Number(balanceBigInt) / Number(divisor);
+                  normalizedBalance = normalized;
+                  displayBalance = normalized.toFixed(6).replace(/\.?0+$/, '');
+                  displaySymbol = tokenSymbol || 'Tokens';
+                } else {
+                  // No decimals available, show raw value
+                  displayBalance = balanceBigInt.toLocaleString('en-US');
+                  displaySymbol = tokenSymbol ? `${tokenSymbol} (raw)` : 'Tokens (raw)';
+                }
+              } catch (e) {
+                console.error('Error formatting ERC-20 token balance:', e);
+                displayBalance = balance;
+                displaySymbol = tokenSymbol || 'Tokens';
+              }
+            }
+
+            // Determine display name
+            let tokenDisplayName = '';
+            if (isNative) {
+              tokenDisplayName = `🌐 Native Token (${displaySymbol})`;
+            } else {
+              if (tokenName && tokenSymbol) {
+                tokenDisplayName = `🪙 ${tokenName} (${tokenSymbol})`;
+              } else if (tokenSymbol) {
+                tokenDisplayName = `🪙 ${tokenSymbol}`;
+              } else if (tokenName) {
+                tokenDisplayName = `🪙 ${tokenName}`;
+              } else {
+                tokenDisplayName = '🪙 ERC-20 Token';
+              }
+            }
+
+            balanceHtml += `
+              <div class="balance-item ${isNative ? 'native-token' : ''}">
+                <div class="token-info">
+                  <div class="token-name">
+                    ${tokenDisplayName}
+                  </div>
+                  ${!isNative ? `<div class="token-address">${token.tokenAddress}</div>` : ''}
+                  <div style="font-size: 11px; color: #999; margin-top: 4px;">
+                    Network: ${network}
+                    ${!isNative && decimals !== null ? ` • Decimals: ${decimals}` : ''}
+                  </div>
+                </div>
+                <div class="token-balance">
+                  <div class="balance-amount">${displayBalance} ${displaySymbol}</div>
+                  ${!isNative && normalizedBalance !== null ? `<div class="balance-usd" style="font-size: 11px; color: #666; margin-top: 2px;">Normalized: ${normalizedBalance.toLocaleString('en-US', { maximumFractionDigits: 6 })}</div>` : ''}
+                  ${!isNative && rawBalance !== balance ? `<div class="balance-usd" style="font-size: 10px; color: #999; margin-top: 2px;">Raw: ${rawBalance}</div>` : ''}
+                </div>
+              </div>
+            `;
+          });
+        }
+
+        balanceHtml += '</div>';
+        balancePanel.innerHTML = balanceHtml;
+
+        // Insert after addresses section or at end of results
+        if (addressesSection) {
+          addressesSection.parentNode.insertBefore(balancePanel, addressesSection.nextSibling);
+        } else {
+          resultsContainer.appendChild(balancePanel);
+        }
+
+        balancePanel.scrollIntoView({ behavior: 'smooth', block: 'nearest' });
       }
     </script>
   </body>

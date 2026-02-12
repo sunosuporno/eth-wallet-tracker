@@ -243,25 +243,14 @@ export class WalletTracerService {
       // Continue without price - USD values will be null
     }
 
-    // Convert minUsdAmount to minEthAmount if provided
+    // Validate minUsdAmount if provided (ETH price required for filtering)
     if (minUsdAmount !== undefined && minUsdAmount > 0) {
       if (ethPrice === null || ethPrice <= 0) {
-        throw new Error('Cannot convert USD to ETH: ETH price not available');
+        throw new Error('Cannot filter by USD amount: ETH price not available');
       }
-      const convertedMinEthAmount = minUsdAmount / ethPrice;
-      // Use the converted value if minEthAmount wasn't explicitly provided, or use the more restrictive one
-      if (minEthAmount === undefined) {
-        minEthAmount = convertedMinEthAmount;
-        console.log(
-          `[WalletTracerService] Converted minUsdAmount $${minUsdAmount} to minEthAmount ${minEthAmount.toFixed(6)} ETH`,
-        );
-      } else {
-        // If both are provided, use the more restrictive one (larger value)
-        minEthAmount = Math.max(minEthAmount, convertedMinEthAmount);
-        console.log(
-          `[WalletTracerService] Using more restrictive filter: minEthAmount ${minEthAmount.toFixed(6)} ETH (from USD: $${minUsdAmount} = ${convertedMinEthAmount.toFixed(6)} ETH)`,
-        );
-      }
+      console.log(
+        `[WalletTracerService] Filtering transactions with minimum USD value: $${minUsdAmount}`,
+      );
     }
 
     // Calculate fromBlock based on days
@@ -351,7 +340,7 @@ export class WalletTracerService {
 
       if (!isIncoming && !isOutgoing) continue;
 
-      // Calculate ETH value first to check if it passes the filter
+      // Extract raw value in wei, then convert to USD for filtering
       let value = BigInt(0);
       if (transfer.category === 'external') {
         // For external transfers, check rawContract.value first (hex string in wei)
@@ -364,12 +353,13 @@ export class WalletTracerService {
         }
       }
 
-      // CRITICAL: Apply minimum ETH amount filter FIRST - before ANY processing
+      // CRITICAL: Apply minimum USD amount filter FIRST - before ANY processing
       // This ensures addresses, transactions, and edges only include filtered data
       if (transfer.category === 'external') {
-        if (minEthAmount !== undefined) {
+        if (minUsdAmount !== undefined && minUsdAmount > 0 && ethPrice) {
           const ethValue = this.weiToEthNumber(value);
-          if (ethValue < minEthAmount || value === 0n) {
+          const usdValue = ethValue * ethPrice;
+          if (usdValue < minUsdAmount || value === 0n) {
             continue; // Skip this transaction entirely - don't track addresses, don't count it, don't add to transactions
           }
         }
@@ -396,9 +386,9 @@ export class WalletTracerService {
           if (erc20Value > 0n) {
             const usdValue = this.calculateStablecoinUsdValue(erc20Value);
 
-            // Apply USD filter for stablecoins (same as ETH)
-            if (minEthAmount !== undefined) {
-              if (usdValue < minEthAmount) {
+            // Apply USD filter for stablecoins - compare USD to USD
+            if (minUsdAmount !== undefined && minUsdAmount > 0) {
+              if (usdValue < minUsdAmount) {
                 continue; // Skip if below threshold
               }
             }
@@ -595,21 +585,14 @@ export class WalletTracerService {
     // Calculate net flow
     const netFlow = totalIncoming - totalOutgoing;
 
-    // Calculate USD values if ETH price is available
-    const totalIncomingEth = this.weiToEthNumber(totalIncoming);
-    const totalOutgoingEth = this.weiToEthNumber(totalOutgoing);
-    const netFlowEth = this.weiToEthNumber(netFlow);
-
-    const totalIncomingUsd = ethPrice ? `$${(totalIncomingEth * ethPrice).toFixed(2)}` : undefined;
-    const totalOutgoingUsd = ethPrice ? `$${(totalOutgoingEth * ethPrice).toFixed(2)}` : undefined;
-    const netFlowUsd = ethPrice ? `$${(netFlowEth * ethPrice).toFixed(2)}` : undefined;
-
     // Transaction count - all transactions in array are already filtered
     const filteredTransactionCount = transactions.length;
 
-    // Calculate top 10 inflow and outflow sources by USD value
+    // Calculate USD totals and top 10 inflow/outflow sources by summing valueUsd from transactions
     const inflowSources = new Map<string, { totalUsd: number; count: number }>(); // address -> { totalUsd, count }
     const outflowSources = new Map<string, { totalUsd: number; count: number }>(); // address -> { totalUsd, count }
+    let totalIncomingUsdSum = 0;
+    let totalOutgoingUsdSum = 0;
 
     for (const tx of transactions) {
       let txUsdValue = 0;
@@ -626,6 +609,16 @@ export class WalletTracerService {
         }
       }
 
+      // Sum totals by transaction type
+      if (txUsdValue > 0) {
+        if (tx.type === 'incoming') {
+          totalIncomingUsdSum += txUsdValue;
+        } else if (tx.type === 'outgoing') {
+          totalOutgoingUsdSum += txUsdValue;
+        }
+      }
+
+      // Track top sources by address
       if (txUsdValue > 0) {
         if (tx.type === 'incoming') {
           // Incoming: money came FROM another address TO center wallet
@@ -671,6 +664,12 @@ export class WalletTracerService {
       .sort((a, b) => this.parseUsdValue(b.totalValueUsd) - this.parseUsdValue(a.totalValueUsd))
       .slice(0, 10);
 
+    // Format USD totals from summed values (use valueUsd directly from transactions)
+    const totalIncomingUsd = `$${totalIncomingUsdSum.toFixed(2)}`;
+    const totalOutgoingUsd = `$${totalOutgoingUsdSum.toFixed(2)}`;
+    const netFlowUsdValue = totalIncomingUsdSum - totalOutgoingUsdSum;
+    const netFlowUsd = `$${netFlowUsdValue.toFixed(2)}`;
+
     const response: WalletTraceResponse = {
       walletAddress: normalizedAddress,
       summary: {
@@ -712,7 +711,7 @@ export class WalletTracerService {
       const graph = await this.buildMultiHopGraph(
         normalizedAddress,
         days,
-        minEthAmount,
+        minUsdAmount,
         hops,
         ethPrice,
         tokenCache,
@@ -740,7 +739,7 @@ export class WalletTracerService {
   private async buildMultiHopGraph(
     centerAddress: string,
     days: number,
-    minEthAmount: number | undefined,
+    minUsdAmount: number | undefined,
     maxHops: number,
     ethPrice: number | null,
     tokenCache: TokenCache,
@@ -784,7 +783,7 @@ export class WalletTracerService {
       finalCenterData = await this.traceSingleAddress(
         centerAddress,
         days,
-        minEthAmount,
+        minUsdAmount,
         ethPrice,
         true, // includeERC20 = true for center wallet
         tokenCache,
@@ -920,7 +919,7 @@ export class WalletTracerService {
             const addressData = await this.traceSingleAddress(
               normalizedAddr,
               days,
-              minEthAmount,
+              minUsdAmount,
               ethPrice,
               false, // includeERC20 = false for hop 1+ addresses
               tokenCache,
@@ -983,7 +982,7 @@ export class WalletTracerService {
             const addressData = await this.traceSingleAddressSummary(
               normalizedAddr,
               days,
-              minEthAmount,
+              minUsdAmount,
               ethPrice,
               currentBlock,
             );
@@ -1252,7 +1251,7 @@ export class WalletTracerService {
   private async traceSingleAddressSummary(
     address: string,
     days: number,
-    minEthAmount: number | undefined,
+    minUsdAmount: number | undefined,
     ethPrice: number | null,
     currentBlock: number,
   ): Promise<{
@@ -1317,9 +1316,10 @@ export class WalletTracerService {
 
       // Apply filter
       if (transfer.category === 'external') {
-        if (minEthAmount !== undefined) {
+        if (minUsdAmount !== undefined && minUsdAmount > 0 && ethPrice) {
           const ethValue = this.weiToEthNumber(value);
-          if (ethValue < minEthAmount || value === 0n) {
+          const usdValue = ethValue * ethPrice;
+          if (usdValue < minUsdAmount || value === 0n) {
             continue;
           }
         }
@@ -1343,8 +1343,9 @@ export class WalletTracerService {
           if (erc20Value > 0n) {
             const usdValue = this.calculateStablecoinUsdValue(erc20Value);
 
-            if (minEthAmount !== undefined) {
-              if (usdValue < minEthAmount) {
+            // Apply USD filter for stablecoins - compare USD to USD
+            if (minUsdAmount !== undefined && minUsdAmount > 0) {
+              if (usdValue < minUsdAmount) {
                 continue;
               }
             }
@@ -1431,7 +1432,7 @@ export class WalletTracerService {
   private async traceSingleAddress(
     address: string,
     days: number,
-    minEthAmount: number | undefined,
+    minUsdAmount: number | undefined,
     ethPrice: number | null,
     includeERC20: boolean = false,
     tokenCache?: TokenCache,
@@ -1546,12 +1547,13 @@ export class WalletTracerService {
         }
       }
 
-      // CRITICAL: Apply minimum ETH amount filter FIRST - before ANY processing
+      // CRITICAL: Apply minimum USD amount filter FIRST - before ANY processing
       // This ensures addresses, transactions, and edges only include filtered data
       if (transfer.category === 'external') {
-        if (minEthAmount !== undefined) {
+        if (minUsdAmount !== undefined && minUsdAmount > 0 && ethPrice) {
           const ethValue = this.weiToEthNumber(value);
-          if (ethValue < minEthAmount || value === 0n) {
+          const usdValue = ethValue * ethPrice;
+          if (usdValue < minUsdAmount || value === 0n) {
             continue; // Skip this transaction entirely - don't track addresses, don't count it, don't add to transactions
           }
         }
@@ -1578,9 +1580,9 @@ export class WalletTracerService {
           if (erc20Value > 0n) {
             const usdValue = this.calculateStablecoinUsdValue(erc20Value);
 
-            // Apply USD filter for stablecoins (same as ETH)
-            if (minEthAmount !== undefined) {
-              if (usdValue < minEthAmount) {
+            // Apply USD filter for stablecoins - compare USD to USD
+            if (minUsdAmount !== undefined && minUsdAmount > 0) {
+              if (usdValue < minUsdAmount) {
                 continue; // Skip if below threshold
               }
             }
@@ -1799,7 +1801,7 @@ export class WalletTracerService {
     const filteredTransactionCount = transactions.length;
 
     console.log(
-      `[traceSingleAddress] ${normalizedAddress} summary: ${filteredTransactionCount} filtered transactions (minEthAmount: ${minEthAmount}), sentTo: ${sentToAddresses.size}, receivedFrom: ${receivedFromAddresses.size}`,
+      `[traceSingleAddress] ${normalizedAddress} summary: ${filteredTransactionCount} filtered transactions (minUsdAmount: ${minUsdAmount}), sentTo: ${sentToAddresses.size}, receivedFrom: ${receivedFromAddresses.size}`,
     );
 
     return {

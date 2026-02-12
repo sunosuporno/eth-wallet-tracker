@@ -469,4 +469,57 @@ export class AlchemyService implements OnModuleInit {
       return 0; // Return 0 on error
     }
   }
+
+  /**
+   * Get token balances for a wallet address using Alchemy Portfolio API
+   * Based on: https://www.alchemy.com/docs/data/portfolio-apis/portfolio-api-endpoints/portfolio-api-endpoints/get-token-balances-by-address
+   */
+  async getTokenBalances(address: string, networks: string[] = ['eth-mainnet']): Promise<any> {
+    try {
+      // Portfolio API uses a different base URL
+      const portfolioApiUrl = `https://api.g.alchemy.com/data/v1/${this.apiKey}/assets/tokens/balances/by-address`;
+
+      const requestBody = {
+        addresses: [
+          {
+            address: address.toLowerCase(),
+            networks: networks,
+          },
+        ],
+        includeNativeTokens: true,
+        includeErc20Tokens: true,
+      };
+
+      console.log(
+        `[AlchemyService] Fetching token balances for ${address} on networks: ${networks.join(', ')}`,
+      );
+
+      return await this.retryWithBackoff(async () => {
+        const response = await firstValueFrom(
+          this.httpService.post<{ data: { tokens: any[]; pageKey?: string } }>(
+            portfolioApiUrl,
+            requestBody,
+            {
+              headers: {
+                'Content-Type': 'application/json',
+              },
+            },
+          ),
+        );
+
+        const data = response.data;
+        if (data?.data?.tokens) {
+          console.log(
+            `[AlchemyService] Retrieved ${data.data.tokens.length} token balances for ${address}`,
+          );
+          return data.data;
+        }
+
+        throw new Error('Unexpected response format from Alchemy Portfolio API');
+      });
+    } catch (error: any) {
+      console.error(`[AlchemyService] Error getting token balances for ${address}:`, error.message);
+      throw new Error(`Failed to fetch token balances: ${error.message}`);
+    }
+  }
 }
